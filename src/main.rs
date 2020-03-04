@@ -49,9 +49,9 @@ fn main() -> Result<()> {
         env::set_var(
             "RUST_LOG",
             if opts.verbose {
-                "{{project-name}}=debug"
+                "{{crate_name}}=debug"
             } else {
-                "{{project-name}}=info"
+                "{{crate_name}}=info"
             },
         );
     }
