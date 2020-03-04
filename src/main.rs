@@ -2,6 +2,7 @@
 use std::result::Result as StdResult;
 use std::{env, fs};
 
+use anyhow::anyhow;
 use env_logger;
 use log;
 use rson_rs as rson;
@@ -28,9 +29,9 @@ struct Config {}
 impl Config {
     pub fn load(path: &str) -> Result<Config> {
         let config_file = fs::read_to_string(path)
-            .map_err(|e| format!("unable to read configuration file: {}", e))?;
+            .map_err(|e| anyhow!("unable to read configuration file: {}", e))?;
         rson::de::from_str(&config_file)
-            .map_err(|e| format!("invalid config file {}: {}", path, e))
+            .map_err(|e| anyhow!("invalid config file {}: {}", path, e))
             .and_then(Config::validate)
     }
 
@@ -39,8 +40,7 @@ impl Config {
     }
 }
 
-type Error = String;
-type Result<T> = StdResult<T, Error>;
+type Result<T> = StdResult<T, anyhow::Error>;
 
 fn main() -> Result<()> {
     let opts = Opt::from_args();
