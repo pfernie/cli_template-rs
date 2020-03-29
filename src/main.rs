@@ -3,11 +3,11 @@ use std::result::Result as StdResult;
 use std::{env, fs};
 
 use anyhow::anyhow;
-use env_logger;
-use log;
 use rson_rs as rson;
 use serde_derive::Deserialize;
 use structopt::StructOpt;
+use tracing::debug;
+use tracing_subscriber;
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -40,7 +40,8 @@ impl Config {
     }
 }
 
-type Result<T> = StdResult<T, anyhow::Error>;
+type Error = anyhow::Error;
+type Result<T> = StdResult<T, Error>;
 
 fn main() -> Result<()> {
     let opts = Opt::from_args();
@@ -55,9 +56,11 @@ fn main() -> Result<()> {
             },
         );
     }
-    env_logger::init();
+    tracing_subscriber::fmt::try_init()
+        .map_err(|e| anyhow!("Failed to initialize tracing: {}", e))?;
 
     let config = Config::load(&opts.config_file)?;
+    debug!("config loaded: {:?}", config);
 
     Ok(())
 }
