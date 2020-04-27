@@ -1,4 +1,5 @@
-#[deny(warnings)]
+#![deny(warnings, missing_debug_implementations, rust_2018_idioms)]
+
 use std::result::Result as StdResult;
 use std::{env, fs};
 
