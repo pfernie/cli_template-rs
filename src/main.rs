@@ -1,24 +1,24 @@
 #![deny(warnings, missing_debug_implementations, rust_2018_idioms)]
 
-use std::{env, fs, result::Result as StdResult};
+use std::{env, fs};
 
-use anyhow::anyhow;
+use clap::Clap;
+use eyre::{eyre, WrapErr};
 use rson_rs as rson;
 use serde_derive::Deserialize;
-use structopt::StructOpt;
 use tracing::debug;
 use tracing_subscriber;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Clap)]
 struct Opt {
-    #[structopt(
+    #[clap(
         short = "c",
         long = "config-file",
         default_value = "{{project-name}}.rson"
     )]
     /// Configuration file to use.
     config_file: String,
-    #[structopt(short = "v")]
+    #[clap(short = "v")]
     /// If specified, debug output will be enabled.
     verbose: bool,
 }
@@ -29,9 +29,9 @@ struct Config {}
 impl Config {
     pub fn load(path: &str) -> Result<Config> {
         let config_file = fs::read_to_string(path)
-            .map_err(|e| anyhow!("unable to read configuration file: {}", e))?;
+            .map_err(|e| eyre!("unable to read configuration file: {}", e))?;
         rson::de::from_str(&config_file)
-            .map_err(|e| anyhow!("invalid config file {}: {}", path, e))
+            .map_err(|e| eyre!("invalid config file {}: {}", path, e))
             .and_then(Config::validate)
     }
 
@@ -40,24 +40,33 @@ impl Config {
     }
 }
 
-type Error = anyhow::Error;
-type Result<T> = StdResult<T, Error>;
+type Error = eyre::Error;
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+fn init_tracing(opts: &Opt) -> Result<()> {
+    use tracing_subscriber::{filter::EnvFilter, fmt};
+
+    let filter = if env::var_os("RUST_LOG").is_some() {
+        EnvFilter::try_from_default_env().map_err(Into::into)
+    } else {
+        EnvFilter::try_new(&format!(
+            "{{crate_name}}={}",
+            if opts.verbose { "debug" } else { "info" }
+        ))
+        .map_err::<Error, _>(Into::into)
+    }
+    .wrap_err_with(|| eyre!("failed to initialize tracing EnvFilter"))?;
+
+    fmt::fmt()
+        .with_env_filter(filter)
+        .try_init()
+        .map_err(|e| eyre!("Failed to initialize tracing: {}", e))
+}
 
 fn main() -> Result<()> {
-    let opts = Opt::from_args();
+    let opts = Opt::parse();
 
-    if env::var_os("RUST_LOG").is_none() {
-        env::set_var(
-            "RUST_LOG",
-            if opts.verbose {
-                "{{crate_name}}=debug"
-            } else {
-                "{{crate_name}}=info"
-            },
-        );
-    }
-    tracing_subscriber::fmt::try_init()
-        .map_err(|e| anyhow!("Failed to initialize tracing: {}", e))?;
+    init_tracing(&opts)?;
 
     let config = Config::load(&opts.config_file)?;
     debug!("config loaded: {:?}", config);
