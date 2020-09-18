@@ -10,7 +10,7 @@ use tracing::debug;
 use tracing_subscriber;
 
 #[derive(Debug, Clap)]
-struct Opt {
+struct Args {
     #[clap(
         short = "c",
         long = "config-file",
@@ -43,7 +43,7 @@ impl Config {
 type Error = eyre::Error;
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-fn init_tracing(opts: &Opt) -> Result<()> {
+fn init_tracing(args: &Args) -> Result<()> {
     use tracing_subscriber::{filter::EnvFilter, fmt};
 
     let filter = if env::var_os("RUST_LOG").is_some() {
@@ -51,7 +51,7 @@ fn init_tracing(opts: &Opt) -> Result<()> {
     } else {
         EnvFilter::try_new(&format!(
             "{{crate_name}}={}",
-            if opts.verbose { "debug" } else { "info" }
+            if args.verbose { "debug" } else { "info" }
         ))
         .map_err::<Error, _>(Into::into)
     }
@@ -64,11 +64,11 @@ fn init_tracing(opts: &Opt) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    let opts = Opt::parse();
+    let args = Opt::parse();
 
-    init_tracing(&opts)?;
+    init_tracing(&args)?;
 
-    let config = Config::load(&opts.config_file)?;
+    let config = Config::load(&args.config_file)?;
     debug!("config loaded: {:?}", config);
 
     Ok(())
