@@ -64,7 +64,7 @@ fn init_tracing(args: &Args) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    let args = Opt::parse();
+    let args = Args::parse();
 
     init_tracing(&args)?;
 
